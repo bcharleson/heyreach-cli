@@ -73,6 +73,7 @@ function extractMessage(raw: string): string {
     }
     if (parts.length > 0) return parts.join('. ');
   }
+  if (nested?.errorMessage) return String(nested.errorMessage);
   return raw;
 }
 
