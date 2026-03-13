@@ -50,7 +50,7 @@ export class ServerError extends HeyReachError {
 
 export function classifyHttpError(status: number, body: string): HeyReachError {
   const parsed = safeParse(body);
-  const message = parsed?.message ?? parsed?.error ?? body;
+  const message = parsed?.message || parsed?.error || body || `HTTP ${status} error`;
 
   if (status === 401 || status === 403) return new AuthError(message);
   if (status === 404) return new NotFoundError(message);

@@ -11,8 +11,8 @@ export const statsOverviewCommand: CommandDefinition = {
     'heyreach stats overview --start-date 2025-01-01 --end-date 2025-01-31 --campaign-ids "1,2,3"',
   ],
   inputSchema: z.object({
-    startDate: z.string().describe('Start date (ISO 8601)'),
-    endDate: z.string().describe('End date (ISO 8601)'),
+    startDate: z.string().optional().describe('Start date (ISO 8601). Defaults to 30 days ago.'),
+    endDate: z.string().optional().describe('End date (ISO 8601). Defaults to today.'),
     accountIds: z.string().optional().describe('Comma-separated LinkedIn account IDs (empty = all)'),
     campaignIds: z.string().optional().describe('Comma-separated campaign IDs (empty = all)'),
   }),
@@ -27,12 +27,14 @@ export const statsOverviewCommand: CommandDefinition = {
   endpoint: { method: 'POST', path: '/stats/GetOverallStats' },
   fieldMappings: {},
   handler: async (input, client) => {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const body: Record<string, unknown> = {
-      startDate: input.startDate,
-      endDate: input.endDate,
+      startDate: input.startDate ?? thirtyDaysAgo.toISOString(),
+      endDate: input.endDate ?? now.toISOString(),
+      accountIds: input.accountIds ? input.accountIds.split(',').map((s: string) => Number(s.trim())) : [],
+      campaignIds: input.campaignIds ? input.campaignIds.split(',').map((s: string) => Number(s.trim())) : [],
     };
-    if (input.accountIds) body.accountIds = input.accountIds.split(',').map((s: string) => Number(s.trim()));
-    if (input.campaignIds) body.campaignIds = input.campaignIds.split(',').map((s: string) => Number(s.trim()));
     return client.request({ method: 'POST', path: '/stats/GetOverallStats', body });
   },
 };

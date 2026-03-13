@@ -49,6 +49,7 @@ function registerLoginCommand(program: Command): void {
     .command('login')
     .description('Save your API key to ~/.heyreach/config.json')
     .option('--org', 'Store Organization API key instead of workspace key')
+    .addHelpText('after', '\nExamples:\n  $ heyreach login --api-key <key>\n  $ heyreach login --org --org-key <key>\n  $ heyreach login  # interactive prompt')
     .action(async (opts) => {
       const globalOpts = getGlobalOpts(program);
       const isOrg = opts.org;
@@ -69,9 +70,19 @@ function registerLoginCommand(program: Command): void {
         return;
       }
 
+      // Validate the key before saving
+      try {
+        const checkPath = isOrg ? '/organization/GetWorkspaces' : '/auth/CheckApiKey';
+        const client = createClient({ apiKey, baseUrl: 'https://api.heyreach.io/api/public' });
+        await client.request({ method: 'GET', path: checkPath });
+      } catch {
+        outputError({ error: `Invalid ${isOrg ? 'Organization' : ''} API key. Check your key and try again.`, code: 'AUTH_ERROR' }, globalOpts);
+        return;
+      }
+
       const config = isOrg ? { org_api_key: apiKey } : { api_key: apiKey };
       saveConfig(config);
-      output({ success: true, message: 'Credentials saved.', config_path: getConfigPath() }, globalOpts);
+      output({ success: true, message: 'Credentials saved and verified.', config_path: getConfigPath() }, globalOpts);
     });
 }
 
@@ -103,9 +114,11 @@ function registerStatusCommand(program: Command): void {
         }, globalOpts);
       } catch (err) {
         const config = loadConfig();
+        const usedKey = globalOpts.apiKey ?? process.env.HEYREACH_API_KEY ?? config.api_key;
         output({
           authenticated: false,
-          api_key: config.api_key ? '***' + config.api_key.slice(-4) : '(not set)',
+          api_key: usedKey ? '***' + usedKey.slice(-4) : '(not set)',
+          api_key_source: globalOpts.apiKey ? '--api-key flag' : process.env.HEYREACH_API_KEY ? 'HEYREACH_API_KEY env' : config.api_key ? 'config file' : 'none',
           config_path: getConfigPath(),
           error: err instanceof Error ? err.message : String(err),
         }, globalOpts);

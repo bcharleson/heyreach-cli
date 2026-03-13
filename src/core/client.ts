@@ -111,7 +111,9 @@ export function createClient(auth: AuthContext): HeyReachClient {
 }
 
 function buildUrl(baseUrl: string, path: string, query?: Record<string, unknown>): string {
-  const url = new URL(path, baseUrl.endsWith('/') ? baseUrl : baseUrl + '/');
+  const base = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  const url = new URL(cleanPath, base);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== null) {

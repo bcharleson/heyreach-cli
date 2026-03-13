@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { CommandDefinition } from '../../core/types.js';
 import { executeCommand } from '../../core/handler.js';
+import { ValidationError } from '../../core/errors.js';
 
 export const listsGetForLeadCommand: CommandDefinition = {
   name: 'lists_get_for_lead',
@@ -26,5 +27,10 @@ export const listsGetForLeadCommand: CommandDefinition = {
   },
   endpoint: { method: 'POST', path: '/list/GetListsForLead' },
   fieldMappings: { offset: 'body', limit: 'body', email: 'body', linkedinId: 'body', profileUrl: 'body' },
-  handler: (input, client) => executeCommand(listsGetForLeadCommand, input, client),
+  handler: (input, client) => {
+    if (!input.email && !input.linkedinId && !input.profileUrl) {
+      throw new ValidationError('At least one of --email, --linkedin-id, or --profile-url is required.');
+    }
+    return executeCommand(listsGetForLeadCommand, input, client);
+  },
 };
