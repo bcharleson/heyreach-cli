@@ -1,6 +1,6 @@
 {
   "name": "heyreach-cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "CLI and MCP server for the HeyReach LinkedIn automation platform. Manage campaigns, leads, lists, inbox, webhooks, and more — from your terminal.",
   "type": "module",
   "bin": {

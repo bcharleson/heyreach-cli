@@ -8,7 +8,7 @@ program
   .description(
     'HeyReach CLI — manage LinkedIn campaigns, leads, lists, inbox, webhooks, and more from your terminal.',
   )
-  .version('0.1.2')
+  .version('0.1.3')
   .option('--pretty', 'Pretty-print JSON output')
   .option('--quiet', 'Suppress output, exit codes only')
   .option('--fields <fields>', 'Comma-separated fields to include in output')

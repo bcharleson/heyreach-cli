@@ -50,7 +50,9 @@ export class ServerError extends HeyReachError {
 
 export function classifyHttpError(status: number, body: string): HeyReachError {
   const parsed = safeParse(body);
-  const message = parsed?.message || parsed?.error || body || `HTTP ${status} error`;
+  const rawVal = parsed?.message || parsed?.error || body || `HTTP ${status} error`;
+  const raw = typeof rawVal === 'string' ? rawVal : JSON.stringify(rawVal);
+  const message = extractMessage(raw);
 
   if (status === 401 || status === 403) return new AuthError(message);
   if (status === 404) return new NotFoundError(message);
@@ -60,7 +62,21 @@ export function classifyHttpError(status: number, body: string): HeyReachError {
   return new HeyReachError(message, 'HTTP_ERROR', status);
 }
 
-function safeParse(text: string): Record<string, string> | null {
+function extractMessage(raw: string): string {
+  // Handle nested JSON error strings like: {"errors":{"AccountIds":["The AccountIds field is required."]}}
+  const nested = safeParse(raw);
+  if (nested?.errors && typeof nested.errors === 'object') {
+    const parts: string[] = [];
+    for (const [field, msgs] of Object.entries(nested.errors as Record<string, unknown>)) {
+      const msgList = Array.isArray(msgs) ? msgs.join('; ') : String(msgs);
+      parts.push(`${field}: ${msgList}`);
+    }
+    if (parts.length > 0) return parts.join('. ');
+  }
+  return raw;
+}
+
+function safeParse(text: string): Record<string, unknown> | null {
   try {
     return JSON.parse(text);
   } catch {
