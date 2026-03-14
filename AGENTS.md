@@ -13,6 +13,9 @@ export HEYREACH_API_KEY="your-api-key-here"
 
 # Verify it works
 heyreach status
+
+# Or save credentials (validates key before saving)
+heyreach login --api-key "your-api-key-here"
 ```
 
 **Requirements:** Node.js 18+
@@ -29,6 +32,13 @@ Or pass it per-command:
 
 ```bash
 heyreach campaigns list --api-key "your-api-key-here"
+```
+
+Or save it permanently (validates the key first):
+
+```bash
+heyreach login --api-key "your-api-key-here"
+# → {"success":true,"message":"Credentials saved and verified."}
 ```
 
 API keys are generated from: HeyReach → Settings → Integrations → Public API
@@ -49,6 +59,7 @@ Or per-command: `heyreach org workspaces --org-key "your-org-key"`
 - API keys never expire but can be deleted/deactivated
 - Workspace key and Organization key are separate — each has its own 300 req/min rate limit
 - Base URL is fixed: `https://api.heyreach.io/api/public/`
+- `heyreach login` validates the key against the API before saving — invalid keys are rejected immediately
 
 ## Output Format
 
@@ -74,6 +85,17 @@ heyreach campaigns list --quiet
 {"error":"No API key found. Run \"heyreach login\" or set HEYREACH_API_KEY.","code":"AUTH_ERROR"}
 ```
 
+### Error codes
+
+| Code | Meaning |
+|------|---------|
+| `AUTH_ERROR` | Missing or invalid API key |
+| `NOT_FOUND` | Resource doesn't exist (bad ID, no matching lead, etc.) |
+| `VALIDATION_ERROR` | Missing required fields or invalid input |
+| `RATE_LIMIT` | 300 req/min exceeded (auto-retried with backoff) |
+| `SERVER_ERROR` | HeyReach API error (auto-retried up to 3 times) |
+| `HTTP_ERROR` | Other HTTP error |
+
 ## Discovering Commands
 
 ```bash
@@ -87,114 +109,122 @@ heyreach campaigns --help
 heyreach campaigns list --help
 ```
 
-## All Command Groups
+## Complete Command Reference
 
 ### campaigns (8 commands)
-Manage LinkedIn outreach campaigns — list, get, pause, resume, add leads, stop leads, pull lead analytics.
+Manage LinkedIn outreach campaigns.
 
-```
-list          List campaigns (paginated, filterable by keyword/status/account)
-get           Get a campaign by ID
-resume        Resume a paused campaign
-pause         Pause a running campaign
-add-leads     Add leads to a campaign (V2 — returns added/updated/failed counts)
-stop-lead     Stop a lead's progression in a campaign
-get-leads     Get leads from a campaign with status breakdowns
-get-for-lead  Find which campaigns a lead is enrolled in
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `list` | — | `--offset` `--limit` `--keyword` `--statuses` `--account-ids` | List campaigns (paginated) |
+| `get` | `--campaign-id` | — | Get campaign by ID |
+| `resume` | `--campaign-id` | — | Resume a paused campaign |
+| `pause` | `--campaign-id` | — | Pause a running campaign |
+| `add-leads` | `--campaign-id` `--leads-json` | `--resume-finished` `--resume-paused` | Add leads (V2, returns counts) |
+| `stop-lead` | `--campaign-id` | `--lead-member-id` `--lead-url` | Stop lead progression |
+| `get-leads` | `--campaign-id` | `--offset` `--limit` `--time-from` `--time-to` `--time-filter` | Get leads with analytics |
+| `get-for-lead` | at least one of: `--email` `--linkedin-id` `--profile-url` | `--offset` `--limit` | Find campaigns for a lead |
 
 ### inbox (4 commands)
-Read and respond to LinkedIn conversations across all connected accounts.
+Read and respond to LinkedIn conversations.
 
-```
-list      List conversations (filter by account, campaign, tags, seen status, search)
-get       Get a conversation with all messages by account ID + conversation ID
-send      Send a message to a LinkedIn conversation
-set-seen  Mark a conversation as seen or unseen
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `list` | — | `--offset` `--limit` `--account-ids` `--campaign-ids` `--search` `--lead-linkedin-id` `--lead-profile-url` `--tags` `--seen` | List conversations |
+| `get` | `--account-id` `--conversation-id` | — | Get conversation with messages |
+| `send` | `--message` `--conversation-id` `--account-id` | `--subject` | Send a message |
+| `set-seen` | `--conversation-id` `--account-id` `--seen` | — | Mark seen/unseen |
 
 ### accounts (2 commands)
 Manage connected LinkedIn accounts.
 
-```
-list  List all LinkedIn accounts (paginated, searchable)
-get   Get a LinkedIn account by ID
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `list` | — | `--offset` `--limit` `--keyword` | List LinkedIn accounts |
+| `get` | `--account-id` | — | Get account by ID |
 
 ### lists (9 commands)
 Manage lead and company lists.
 
-```
-list                List all lists (filter by type, keyword, campaign)
-get                 Get a list by ID
-create              Create an empty lead or company list
-get-leads           Get leads from a list (up to 1000 per request)
-add-leads           Add leads to a list (V2 — returns detailed counts)
-delete-leads        Delete leads from a list by LinkedIn member IDs
-delete-leads-by-url Delete leads from a list by LinkedIn profile URLs
-get-companies       Get companies from a company list
-get-for-lead        Find which lists a lead belongs to
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `list` | — | `--offset` `--limit` `--keyword` `--list-type` `--campaign-ids` | List all lists |
+| `get` | `--list-id` | — | Get list by ID |
+| `create` | `--name` | `--type` | Create empty list |
+| `get-leads` | `--list-id` | `--offset` `--limit` (max 1000) `--keyword` `--profile-url` `--linkedin-id` `--created-from` `--created-to` | Get leads from list |
+| `add-leads` | `--list-id` `--leads-json` | — | Add leads (V2, returns counts) |
+| `delete-leads` | `--list-id` `--member-ids` | — | Delete by member IDs |
+| `delete-leads-by-url` | `--list-id` `--urls` | — | Delete by profile URLs |
+| `get-companies` | `--list-id` | `--offset` `--limit` (max 1000) `--keyword` | Get companies from list |
+| `get-for-lead` | at least one of: `--email` `--linkedin-id` `--profile-url` | `--offset` `--limit` | Find lists for a lead |
 
 ### stats (1 command)
 Pull campaign analytics with day-by-day breakdown.
 
-```
-overview  Overall stats for date range (profile views, messages, connections, reply rates)
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `overview` | — | `--start-date` `--end-date` `--account-ids` `--campaign-ids` | Stats for date range |
+
+**Note:** `--start-date` and `--end-date` default to the last 30 days if omitted. Just run `heyreach stats overview` for a quick summary.
 
 ### leads (4 commands)
 Look up and tag individual leads.
 
-```
-get          Get lead details by LinkedIn profile URL
-add-tags     Add tags to a lead (existing tags unchanged)
-get-tags     Get tags for a lead (alphabetically sorted)
-replace-tags Remove all existing tags and replace with new tags
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `get` | `--profile-url` | — | Get lead details |
+| `add-tags` | `--tags` | `--profile-url` `--linkedin-id` `--create-if-missing` | Add tags to a lead |
+| `get-tags` | `--profile-url` | — | Get tags (alphabetical) |
+| `replace-tags` | `--tags` | `--profile-url` `--linkedin-id` `--create-if-missing` | Replace all tags |
+
+**Note:** For `add-tags` and `replace-tags`, provide at least one of `--profile-url` or `--linkedin-id`. The `--create-if-missing` flag (default: true) auto-creates tags that don't exist yet.
 
 ### lead-tags (1 command)
 Create workspace-level tags.
 
-```
-create  Create one or multiple tags with display name and color
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `create` | `--tags-json` | — | Create tags with name + color |
+
+Example: `heyreach lead-tags create --tags-json '[{"displayName":"Hot Lead","color":"Red"}]'`
 
 ### webhooks (5 commands)
 Subscribe to real-time LinkedIn events.
 
-```
-create  Create a webhook for a specific event type
-get     Get a webhook by ID
-list    List all webhooks (paginated)
-update  Update webhook configuration (name, URL, event type, active status)
-delete  Delete a webhook
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `create` | `--name` `--url` `--event-type` | `--campaign-ids` | Create webhook |
+| `get` | `--webhook-id` | — | Get webhook by ID |
+| `list` | — | `--offset` `--limit` | List all webhooks |
+| `update` | `--webhook-id` | `--name` `--url` `--event-type` `--campaign-ids` `--active` | Update webhook |
+| `delete` | `--webhook-id` | — | Delete webhook |
 
 ### network (2 commands)
 Query LinkedIn network connections.
 
-```
-list   Get network connections for a LinkedIn sender (uses pageNumber/pageSize pagination)
-check  Check if a lead is connected to a specific sender
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `list` | `--sender-id` | `--page` `--page-size` | List connections (pageNumber pagination) |
+| `check` | `--sender-id` + one of: `--profile-url` or `--linkedin-id` | — | Check if connected |
+
+**Note:** Network commands use `--page`/`--page-size` instead of `--offset`/`--limit`.
 
 ### org (11 commands)
-Organization management — requires Organization API key.
+Organization management — requires Organization API key (`--org-key` or `HEYREACH_ORG_API_KEY`).
 
-```
-workspaces       List all workspaces
-create-workspace Create a new workspace
-update-workspace Update workspace name or seat limit
-api-keys         Get API/integration keys for a workspace
-create-api-key   Generate a new API key (PUBLIC, N8N, MAKE, ZAPIER, MCP)
-users            List all org users (filter by role, invitation status)
-get-user         Get user details by ID
-workspace-users  List users in a specific workspace
-invite-admins    Invite users as organization admins
-invite-members   Invite users with specific workspace permissions
-invite-managers  Invite external managers with workspace access
-```
+| Command | Required flags | Optional flags | Description |
+|---------|---------------|----------------|-------------|
+| `workspaces` | — | `--offset` `--limit` | List all workspaces |
+| `create-workspace` | `--name` | `--seats-limit` | Create workspace |
+| `update-workspace` | `--workspace-id` | `--name` `--seats-limit` | Update workspace |
+| `api-keys` | `--workspace-id` | — | Get API keys for workspace |
+| `create-api-key` | `--workspace-id` `--type` | — | Generate new API key |
+| `users` | — | `--offset` `--limit` `--role` `--invitation-status` | List all org users |
+| `get-user` | `--user-id` | — | Get user details |
+| `workspace-users` | `--workspace-id` | `--offset` `--limit` `--role` `--invitation-status` | List workspace users |
+| `invite-admins` | `--inviter-email` `--emails` | — | Invite org admins |
+| `invite-members` | `--inviter-email` `--emails` `--workspace-ids` `--permissions-json` | — | Invite with permissions |
+| `invite-managers` | `--inviter-email` `--emails` `--workspace-ids` | — | Invite external managers |
 
 ## Common Workflows
 
@@ -266,12 +296,14 @@ heyreach webhooks create --name "Connections" \
 ### Pull analytics
 
 ```bash
-# Last 30 days overall stats
+# Last 30 days overall stats (dates default automatically)
+heyreach stats overview --pretty
+
+# Custom date range
 heyreach stats overview \
   --start-date "2025-01-01T00:00:00Z" \
   --end-date "2025-01-31T23:59:59Z" \
   --pretty
-# → { byDayStats: {...}, overallStats: { messagesSent, totalMessageReplies, ... } }
 ```
 
 ### Manage lists
@@ -324,9 +356,34 @@ heyreach campaigns list --offset 100 --limit 100
 
 Response: `{ "totalCount": 250, "items": [...] }`
 
-**Max items per request:** 100 (1000 for lead/company list queries)
+**Max items per request:** 100 (1000 for `lists get-leads` and `lists get-companies`)
 
 **Exception:** Network commands use `--page` and `--page-size` instead of offset/limit.
+
+## Input Patterns
+
+### Comma-separated lists
+Arrays are passed as comma-separated strings:
+```bash
+--statuses "IN_PROGRESS,PAUSED"
+--tags "hot,priority"
+--campaign-ids "123,456,789"
+--emails "a@co.com,b@co.com"
+--urls "https://linkedin.com/in/one,https://linkedin.com/in/two"
+```
+
+### JSON inputs
+Complex nested data uses `--xxx-json` flags:
+```bash
+# Lead data for campaigns/lists
+--leads-json '[{"lead":{"firstName":"Jane","profileUrl":"..."}}]'
+
+# Tag creation
+--tags-json '[{"displayName":"Hot","color":"Red"}]'
+
+# Workspace permissions
+--permissions-json '{"viewCampaigns":true,"editManageCampaigns":true}'
+```
 
 ## Key Enums
 
@@ -383,3 +440,5 @@ MCP config for your AI assistant:
 12. **Org commands need a separate key** — set `HEYREACH_ORG_API_KEY` for `heyreach org ...` commands
 13. **Lead lookup is by profile URL** — use `--profile-url` to identify leads across most endpoints
 14. **V2 endpoints are used by default** — `add-leads` returns `{addedLeadsCount, updatedLeadsCount, failedLeadsCount}` instead of just a number
+15. **Error messages are parsed** — nested API validation errors are extracted into clean, readable messages
+16. **Login validates keys** — `heyreach login` checks the key against the API before saving, so a successful login means the key works
