@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { allCommands } from './commands/index.js';
@@ -5,13 +6,16 @@ import { resolveAuth } from './core/auth.js';
 import { createClient } from './core/client.js';
 import { formatError } from './core/errors.js';
 
+const require = createRequire(import.meta.url);
+const pkg = require('../package.json') as { version: string };
+
 export async function startMcpFromCli(): Promise<void> {
   const auth = resolveAuth();
   const client = createClient(auth);
 
   const server = new McpServer({
     name: 'heyreach',
-    version: '0.1.0',
+    version: pkg.version,
   });
 
   for (const cmdDef of allCommands) {
