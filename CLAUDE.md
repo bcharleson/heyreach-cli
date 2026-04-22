@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-CLI and MCP server for the [HeyReach](https://heyreach.io) LinkedIn automation platform. Wraps the HeyReach Public API (47 commands across 10 groups) into both a terminal CLI and an MCP server for AI assistants.
+CLI and MCP server for the [HeyReach](https://heyreach.io) LinkedIn automation platform. Wraps the HeyReach Public API (53 commands across 10 groups) into both a terminal CLI and an MCP server for AI assistants.
 
 **Dual interface, single codebase:** Every API endpoint is defined once as a `CommandDefinition` object that powers both the CLI subcommand and the MCP tool.
 
@@ -59,7 +59,7 @@ src/
 │   └── errors.ts
 ├── commands/
 │   ├── index.ts             # Registry + registerAllCommands()
-│   ├── campaigns/           # 8 commands (list, get, resume, pause, add-leads, stop-lead, get-leads, get-for-lead)
+│   ├── campaigns/           # 14 commands (list, get, resume, pause, add-leads, stop-lead, get-leads, get-for-lead, create, update-settings, update-sequence, update-accounts, update-schedule, get-sequence)
 │   ├── inbox/               # 4 commands (list, get, send, set-seen)
 │   ├── accounts/            # 2 commands (list, get) — LinkedIn accounts
 │   ├── lists/               # 9 commands (get, list, create, get-leads, add-leads, delete-leads, delete-leads-by-url, get-companies, get-for-lead)

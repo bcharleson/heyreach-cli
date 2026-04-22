@@ -2,7 +2,7 @@
 
 **HeyReach in your terminal.** Run LinkedIn automation campaigns, manage leads, lists, conversations, webhooks, and organization settings — from a single command line.
 
-47 commands across 10 API groups. Full coverage of the [HeyReach](https://heyreach.io) Public API. Built for humans, scripts, CI/CD pipelines, and AI agents.
+53 commands across 10 API groups. Full coverage of the [HeyReach](https://heyreach.io) Public API. Built for humans, scripts, CI/CD pipelines, and AI agents.
 
 ```bash
 npm install -g heyreach-cli
@@ -156,9 +156,9 @@ heyreach campaigns list --quiet
 
 ## Commands
 
-### Campaigns (8)
+### Campaigns (14)
 
-Manage LinkedIn outreach campaigns.
+Manage LinkedIn outreach campaigns — including full programmatic creation, sequence design, and scheduling so AI agents can build and launch campaigns end-to-end.
 
 ```bash
 heyreach campaigns list [--keyword <text>] [--statuses <list>] [--account-ids <list>]
@@ -169,7 +169,15 @@ heyreach campaigns add-leads --campaign-id <id> --leads-json '<json>'
 heyreach campaigns stop-lead --campaign-id <id> [--lead-url <url>] [--lead-member-id <id>]
 heyreach campaigns get-leads --campaign-id <id> [--time-from <iso>] [--time-to <iso>] [--time-filter <type>]
 heyreach campaigns get-for-lead [--email <e>] [--linkedin-id <id>] [--profile-url <url>]
+heyreach campaigns create --name <name> --list-id <id> --account-ids <list> [--schedule-json <json>] [--sequence-json <json>] [--exclude-list-id <id>] [--exclude-contacted-other-campaigns] [--exclude-other-conversations] [--exclude-sender-contacted]
+heyreach campaigns update-settings --campaign-id <id> --name <name> --list-id <id> [--exclude-list-id <id>] [--exclude-contacted-other-campaigns] [--exclude-other-conversations] [--exclude-sender-contacted]
+heyreach campaigns update-sequence --campaign-id <id> --sequence-json '<json>'
+heyreach campaigns update-accounts --campaign-id <id> --account-ids <list>
+heyreach campaigns update-schedule --campaign-id <id> --schedule-json '<json>'
+heyreach campaigns get-sequence --campaign-id <id>
 ```
+
+**Campaign creation flow:** `create` returns `{campaignId}` in DRAFT status. Adjust via `update-*` commands, then call `resume` to activate. `get-sequence` returns a reusable `PublicSequenceNodeDto` — feed its output directly back into `create --sequence-json` to clone workflows. `update-settings`, `update-sequence`, `update-accounts`, and `update-schedule` only work on DRAFT / SCHEDULED / PAUSED campaigns.
 
 **Statuses:** DRAFT, IN_PROGRESS, PAUSED, FINISHED, CANCELED, FAILED, STARTING, SCHEDULED
 
@@ -438,7 +446,7 @@ heyreach org create-api-key --workspace-id 123 --type PUBLIC
 
 ## MCP Server
 
-The CLI doubles as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server, giving AI assistants direct access to all 47 HeyReach tools as native function calls.
+The CLI doubles as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server, giving AI assistants direct access to all 53 HeyReach tools as native function calls.
 
 ```bash
 heyreach mcp
@@ -474,11 +482,11 @@ Add to your MCP settings (Claude Desktop, Cursor, VS Code, Windsurf):
 }
 ```
 
-This registers 47 tools across 10 groups:
+This registers 53 tools across 10 groups:
 
 | Group | Tools | Examples |
 |-------|-------|---------|
-| Campaigns | 8 | `campaigns_list`, `campaigns_resume`, `campaigns_add_leads` |
+| Campaigns | 14 | `campaigns_list`, `campaigns_create`, `campaigns_update_sequence`, `campaigns_get_sequence` |
 | Inbox | 4 | `inbox_list`, `inbox_get`, `inbox_send`, `inbox_set_seen` |
 | Accounts | 2 | `accounts_list`, `accounts_get` |
 | Lists | 9 | `lists_list`, `lists_create`, `lists_add_leads`, `lists_get_companies` |
@@ -518,7 +526,7 @@ src/
 │   ├── output.ts     # JSON output formatting
 │   └── handler.ts    # Request builder from CommandDefinition
 ├── commands/
-│   ├── campaigns/    # 8 commands
+│   ├── campaigns/    # 14 commands
 │   ├── inbox/        # 4 commands
 │   ├── accounts/     # 2 commands
 │   ├── lists/        # 9 commands

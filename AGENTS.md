@@ -111,8 +111,8 @@ heyreach campaigns list --help
 
 ## Complete Command Reference
 
-### campaigns (8 commands)
-Manage LinkedIn outreach campaigns.
+### campaigns (14 commands)
+Manage LinkedIn outreach campaigns — including full programmatic creation, sequence design, and scheduling so AI agents can build and launch campaigns end-to-end without touching the UI.
 
 | Command | Required flags | Optional flags | Description |
 |---------|---------------|----------------|-------------|
@@ -124,6 +124,14 @@ Manage LinkedIn outreach campaigns.
 | `stop-lead` | `--campaign-id` | `--lead-member-id` `--lead-url` | Stop lead progression |
 | `get-leads` | `--campaign-id` | `--offset` `--limit` `--time-from` `--time-to` `--time-filter` | Get leads with analytics |
 | `get-for-lead` | at least one of: `--email` `--linkedin-id` `--profile-url` | `--offset` `--limit` | Find campaigns for a lead |
+| `create` | `--name` `--list-id` `--account-ids` | `--schedule-json` `--sequence-json` `--exclude-list-id` `--exclude-contacted-other-campaigns` `--exclude-other-conversations` `--exclude-sender-contacted` | Create a fully configured campaign in DRAFT status (returns `{campaignId}`) |
+| `update-settings` | `--campaign-id` `--name` `--list-id` | `--exclude-list-id` `--exclude-contacted-other-campaigns` `--exclude-other-conversations` `--exclude-sender-contacted` | Update campaign name, lead list, and exclusions. DRAFT/SCHEDULED/PAUSED only |
+| `update-sequence` | `--campaign-id` `--sequence-json` | — | Create or replace the automation workflow (`PublicSequenceNodeDto`). DRAFT/SCHEDULED/PAUSED only |
+| `update-accounts` | `--campaign-id` `--account-ids` | — | Replace the full list of LinkedIn sender accounts. DRAFT/SCHEDULED/PAUSED only |
+| `update-schedule` | `--campaign-id` `--schedule-json` | — | Replace daily window, days, timezone, optional start/end dates. DRAFT/SCHEDULED/PAUSED only |
+| `get-sequence` | `--campaign-id` | — | Get the current sequence (workflow) as `PublicSequenceNodeDto`, directly reusable in `create` / `update-sequence` |
+
+**Note:** `create`, `update-sequence`, and `update-schedule` accept complex nested DTOs as JSON strings via `--sequence-json` and `--schedule-json`. Use `campaigns get-sequence` on an existing campaign to capture a working sequence shape, then feed the output back into `create` or `update-sequence`.
 
 ### inbox (4 commands)
 Read and respond to LinkedIn conversations.
@@ -260,6 +268,66 @@ heyreach campaigns add-leads --campaign-id 123 --leads-json '[
 ]'
 # → {"addedLeadsCount":1,"updatedLeadsCount":0,"failedLeadsCount":0}
 ```
+
+### Build a campaign programmatically (end-to-end)
+
+```bash
+# 1. Create a lead list and add leads (or reuse an existing list)
+heyreach lists create --name "Q2 CMO Outreach"
+# → {"id":789,...}
+
+heyreach lists add-leads --list-id 789 --leads-json '[
+  {"firstName":"Jane","lastName":"Doe","profileUrl":"https://linkedin.com/in/janedoe","companyName":"Acme","position":"CMO"}
+]'
+
+# 2. Create the campaign in DRAFT with a 2-step sequence (connect + message-on-accept)
+heyreach campaigns create \
+  --name "Q2 CMOs" \
+  --list-id 789 \
+  --account-ids "123,456" \
+  --schedule-json '{"dailyStartTime":"09:00:00","dailyEndTime":"17:00:00","timeZoneId":"America/New_York"}' \
+  --sequence-json '{
+    "nodeType": "CONNECTION_REQUEST",
+    "actionDelay": 3,
+    "actionDelayUnit": "HOUR",
+    "payload": {
+      "messages": ["Hi {{firstName}}, saw your work at {{companyName}} — would love to connect."],
+      "fallbackMessage": "Hi there, would love to connect."
+    },
+    "conditionalNode": {
+      "nodeType": "MESSAGE",
+      "actionDelay": 1,
+      "actionDelayUnit": "DAY",
+      "payload": {
+        "messages": ["Thanks for connecting, {{firstName}}! Quick question..."],
+        "fallbackMessage": "Thanks for connecting! Quick question..."
+      },
+      "unconditionalNode": { "nodeType": "END", "actionDelay": 3, "actionDelayUnit": "HOUR" },
+      "conditionalNode": { "nodeType": "END", "actionDelay": 3, "actionDelayUnit": "HOUR" }
+    },
+    "unconditionalNode": { "nodeType": "END", "actionDelay": 3, "actionDelayUnit": "HOUR" }
+  }'
+# → {"campaignId":12345}
+
+# Note: HeyReach's sequence validator requires an actionDelay (min 3 hours) on
+# CONNECTION_REQUEST and on every END node. Omitting them returns
+# "Node at: ... has invalid delay: 00:00:00".
+
+# 3. Inspect the sequence round-trip (useful for cloning into another campaign)
+heyreach campaigns get-sequence --campaign-id 12345 --pretty
+
+# 4. Adjust any aspect before activating
+heyreach campaigns update-schedule --campaign-id 12345 \
+  --schedule-json '{"dailyStartTime":"10:00:00","dailyEndTime":"16:00:00","timeZoneId":"America/New_York","enabledSaturday":false}'
+
+heyreach campaigns update-accounts --campaign-id 12345 --account-ids "123,456,789"
+
+# 5. Activate the campaign (the Create endpoint leaves it in DRAFT on purpose)
+heyreach campaigns resume --campaign-id 12345
+```
+
+**Tip:** Use `campaigns get-sequence` on a manually-built campaign in the UI to capture a proven sequence shape, then feed that JSON directly back into `create --sequence-json` to replicate the workflow across campaigns.
+
 
 ### Monitor inbox for new replies
 
@@ -403,7 +471,7 @@ Complex nested data uses `--xxx-json` flags:
 
 ## MCP Server (for Claude, Cursor, VS Code)
 
-The CLI includes a built-in MCP server exposing all 47 commands as tools:
+The CLI includes a built-in MCP server exposing all 53 commands as tools:
 
 ```bash
 heyreach mcp
