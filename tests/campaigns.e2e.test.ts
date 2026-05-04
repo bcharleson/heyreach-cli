@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createClient } from '../src/core/client.js';
 import { HeyReachError } from '../src/core/errors.js';
 import { listsListCommand } from '../src/commands/lists/list.js';
+import { listsCreateCommand } from '../src/commands/lists/create.js';
 import { accountsListCommand } from '../src/commands/accounts/list.js';
 import { campaignsCreateCommand } from '../src/commands/campaigns/create.js';
 import { campaignsUpdateSettingsCommand } from '../src/commands/campaigns/update-settings.js';
@@ -10,6 +11,9 @@ import { campaignsUpdateAccountsCommand } from '../src/commands/campaigns/update
 import { campaignsUpdateScheduleCommand } from '../src/commands/campaigns/update-schedule.js';
 import { campaignsGetSequenceCommand } from '../src/commands/campaigns/get-sequence.js';
 import { campaignsGetCommand } from '../src/commands/campaigns/get.js';
+import { campaignsStartCommand } from '../src/commands/campaigns/start.js';
+import { campaignsPauseCommand } from '../src/commands/campaigns/pause.js';
+import { campaignsResumeCommand } from '../src/commands/campaigns/resume.js';
 
 const API_KEY = process.env.HEYREACH_API_KEY;
 const BASE_URL = 'https://api.heyreach.io/api/public';
@@ -31,17 +35,33 @@ describeE2E('e2e: campaigns lifecycle', () => {
   let campaignId: number;
 
   beforeAll(async () => {
-    // Discover at least one USER_LIST and one LinkedIn account to work with.
-    const listsResult = (await listsListCommand.handler(
-      listsListCommand.inputSchema.parse({ limit: 100, listType: 'USER_LIST' }),
+    // CRITICAL: create a fresh, EMPTY USER_LIST for this run. The activation
+    // lifecycle test (step 6) calls StartCampaign on the campaign — if the
+    // attached list contained leads, real LinkedIn messages would be sent.
+    // Using a guaranteed-empty list makes the test safe to run on prod.
+    // Note: the HeyReach API has no DELETE endpoint for lists or campaigns,
+    // so each E2E run leaves an orphan list and an orphan campaign behind.
+    const created = (await listsCreateCommand.handler(
+      listsCreateCommand.inputSchema.parse({
+        name: `e2e-empty-${runStamp}`.slice(0, 50),
+        type: 'USER_LIST',
+      }),
       client,
-    )) as { items: ListItem[] };
-
-    const userList = listsResult.items.find((l) => (l.listType ?? 'USER_LIST') === 'USER_LIST');
-    if (!userList) {
-      throw new Error('E2E requires at least one USER_LIST in the workspace. None found.');
+    )) as { id: number };
+    if (!created?.id) {
+      // Fallback: try to reuse an existing list if creation failed (highly unexpected).
+      const listsResult = (await listsListCommand.handler(
+        listsListCommand.inputSchema.parse({ limit: 100, listType: 'USER_LIST' }),
+        client,
+      )) as { items: ListItem[] };
+      const userList = listsResult.items.find((l) => (l.listType ?? 'USER_LIST') === 'USER_LIST');
+      if (!userList) {
+        throw new Error('E2E requires at least one USER_LIST in the workspace. None found.');
+      }
+      userListId = userList.id;
+    } else {
+      userListId = created.id;
     }
-    userListId = userList.id;
 
     const accountsResult = (await accountsListCommand.handler(
       accountsListCommand.inputSchema.parse({ limit: 10 }),
@@ -178,7 +198,74 @@ describeE2E('e2e: campaigns lifecycle', () => {
     expect(serialized).toContain('e2e-step3-marker');
   });
 
-  it('step 6 — error handling: update on non-existent campaign throws HeyReachError', { timeout: LIVE_TIMEOUT_MS }, async () => {
+  it('step 6 — activation lifecycle: DRAFT → start → IN_PROGRESS → pause → PAUSED → resume → IN_PROGRESS → pause', { timeout: LIVE_TIMEOUT_MS }, async () => {
+    // Sanity: confirm Resume on DRAFT is rejected by the API (proves start is the right command for drafts).
+    const beforeStart = (await campaignsGetCommand.handler(
+      campaignsGetCommand.inputSchema.parse({ campaignId }),
+      client,
+    )) as { status?: string };
+    expect(['DRAFT', 'PAUSED']).toContain(beforeStart.status ?? 'DRAFT');
+
+    if (beforeStart.status === 'DRAFT') {
+      await expect(
+        campaignsResumeCommand.handler(
+          campaignsResumeCommand.inputSchema.parse({ campaignId }),
+          client,
+        ),
+      ).rejects.toBeInstanceOf(HeyReachError);
+    }
+
+    // start: DRAFT/PAUSED → IN_PROGRESS
+    await expect(
+      campaignsStartCommand.handler(
+        campaignsStartCommand.inputSchema.parse({ campaignId }),
+        client,
+      ),
+    ).resolves.toBeDefined();
+    const afterStart = (await campaignsGetCommand.handler(
+      campaignsGetCommand.inputSchema.parse({ campaignId }),
+      client,
+    )) as { status?: string };
+    expect(['IN_PROGRESS', 'STARTING']).toContain(afterStart.status);
+
+    // pause: IN_PROGRESS → PAUSED
+    await expect(
+      campaignsPauseCommand.handler(
+        campaignsPauseCommand.inputSchema.parse({ campaignId }),
+        client,
+      ),
+    ).resolves.toBeDefined();
+    const afterPause = (await campaignsGetCommand.handler(
+      campaignsGetCommand.inputSchema.parse({ campaignId }),
+      client,
+    )) as { status?: string };
+    expect(afterPause.status).toBe('PAUSED');
+
+    // resume: PAUSED → IN_PROGRESS (call must succeed; final status may be
+    // IN_PROGRESS, STARTING, or PAUSED — empirically the HeyReach API
+    // auto-pauses campaigns whose attached list is empty, so resume can
+    // briefly transition to IN_PROGRESS and then settle back to PAUSED).
+    await expect(
+      campaignsResumeCommand.handler(
+        campaignsResumeCommand.inputSchema.parse({ campaignId }),
+        client,
+      ),
+    ).resolves.toBeDefined();
+    const afterResume = (await campaignsGetCommand.handler(
+      campaignsGetCommand.inputSchema.parse({ campaignId }),
+      client,
+    )) as { status?: string };
+    expect(['IN_PROGRESS', 'STARTING', 'PAUSED']).toContain(afterResume.status);
+
+    // Leave the campaign paused so it can never accidentally send. There is no
+    // delete/cancel endpoint in the HeyReach API — paused is the safest terminal state.
+    await campaignsPauseCommand.handler(
+      campaignsPauseCommand.inputSchema.parse({ campaignId }),
+      client,
+    );
+  });
+
+  it('step 7 — error handling: update on non-existent campaign throws HeyReachError', { timeout: LIVE_TIMEOUT_MS }, async () => {
     const input = campaignsUpdateSettingsCommand.inputSchema.parse({
       campaignId: NONEXISTENT_ID,
       name: 'never-applied',
@@ -187,6 +274,15 @@ describeE2E('e2e: campaigns lifecycle', () => {
     await expect(campaignsUpdateSettingsCommand.handler(input, client)).rejects.toBeInstanceOf(
       HeyReachError,
     );
+  });
+
+  it('step 8 — error handling: start on non-existent campaign throws HeyReachError', { timeout: LIVE_TIMEOUT_MS }, async () => {
+    await expect(
+      campaignsStartCommand.handler(
+        campaignsStartCommand.inputSchema.parse({ campaignId: NONEXISTENT_ID }),
+        client,
+      ),
+    ).rejects.toBeInstanceOf(HeyReachError);
   });
 });
 

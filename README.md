@@ -2,7 +2,7 @@
 
 **HeyReach in your terminal.** Run LinkedIn automation campaigns, manage leads, lists, conversations, webhooks, and organization settings — from a single command line.
 
-53 commands across 10 API groups. Full coverage of the [HeyReach](https://heyreach.io) Public API. Built for humans, scripts, CI/CD pipelines, and AI agents.
+54 commands across 10 API groups. Full coverage of the [HeyReach](https://heyreach.io) Public API. Built for humans, scripts, CI/CD pipelines, and AI agents.
 
 ```bash
 npm install -g heyreach-cli
@@ -156,15 +156,16 @@ heyreach campaigns list --quiet
 
 ## Commands
 
-### Campaigns (14)
+### Campaigns (15)
 
-Manage LinkedIn outreach campaigns — including full programmatic creation, sequence design, and scheduling so AI agents can build and launch campaigns end-to-end.
+Manage LinkedIn outreach campaigns — including full programmatic creation, sequence design, scheduling, and activation so AI agents can build, launch, and run campaigns end-to-end.
 
 ```bash
 heyreach campaigns list [--keyword <text>] [--statuses <list>] [--account-ids <list>]
 heyreach campaigns get --campaign-id <id>
-heyreach campaigns resume --campaign-id <id>
-heyreach campaigns pause --campaign-id <id>
+heyreach campaigns start --campaign-id <id>     # DRAFT → IN_PROGRESS
+heyreach campaigns resume --campaign-id <id>    # PAUSED / FINISHED / FAILED → IN_PROGRESS
+heyreach campaigns pause --campaign-id <id>     # IN_PROGRESS → PAUSED  (only way to halt sending)
 heyreach campaigns add-leads --campaign-id <id> --leads-json '<json>'
 heyreach campaigns stop-lead --campaign-id <id> [--lead-url <url>] [--lead-member-id <id>]
 heyreach campaigns get-leads --campaign-id <id> [--time-from <iso>] [--time-to <iso>] [--time-filter <type>]
@@ -177,7 +178,7 @@ heyreach campaigns update-schedule --campaign-id <id> --schedule-json '<json>'
 heyreach campaigns get-sequence --campaign-id <id>
 ```
 
-**Campaign creation flow:** `create` returns `{campaignId}` in DRAFT status. Adjust via `update-*` commands, then call `resume` to activate. `get-sequence` returns a reusable `PublicSequenceNodeDto` — feed its output directly back into `create --sequence-json` to clone workflows. `update-settings`, `update-sequence`, `update-accounts`, and `update-schedule` only work on DRAFT / SCHEDULED / PAUSED campaigns.
+**Campaign creation flow:** `create` returns `{campaignId}` in DRAFT status. Adjust via `update-*` commands, then call `start` to activate. Use `pause` to halt and `resume` to continue (resume is rejected on DRAFT campaigns — use `start` instead). `get-sequence` returns a reusable `PublicSequenceNodeDto` — feed its output directly back into `create --sequence-json` to clone workflows. `update-settings`, `update-sequence`, `update-accounts`, and `update-schedule` only work on DRAFT / SCHEDULED / PAUSED campaigns. **There is no `delete` / `stop` / `cancel` endpoint** in the HeyReach API — once created, a campaign exists forever and can only be paused.
 
 **Statuses:** DRAFT, IN_PROGRESS, PAUSED, FINISHED, CANCELED, FAILED, STARTING, SCHEDULED
 
@@ -526,7 +527,7 @@ src/
 │   ├── output.ts     # JSON output formatting
 │   └── handler.ts    # Request builder from CommandDefinition
 ├── commands/
-│   ├── campaigns/    # 14 commands
+│   ├── campaigns/    # 15 commands
 │   ├── inbox/        # 4 commands
 │   ├── accounts/     # 2 commands
 │   ├── lists/        # 9 commands

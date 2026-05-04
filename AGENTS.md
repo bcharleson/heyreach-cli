@@ -111,15 +111,16 @@ heyreach campaigns list --help
 
 ## Complete Command Reference
 
-### campaigns (14 commands)
-Manage LinkedIn outreach campaigns — including full programmatic creation, sequence design, and scheduling so AI agents can build and launch campaigns end-to-end without touching the UI.
+### campaigns (15 commands)
+Manage LinkedIn outreach campaigns — including full programmatic creation, sequence design, scheduling, and activation so AI agents can build, launch, and run campaigns end-to-end without touching the UI.
 
 | Command | Required flags | Optional flags | Description |
 |---------|---------------|----------------|-------------|
 | `list` | — | `--offset` `--limit` `--keyword` `--statuses` `--account-ids` | List campaigns (paginated) |
 | `get` | `--campaign-id` | — | Get campaign by ID |
-| `resume` | `--campaign-id` | — | Resume a paused campaign |
-| `pause` | `--campaign-id` | — | Pause a running campaign |
+| `start` | `--campaign-id` | — | Activate a DRAFT campaign (DRAFT → IN_PROGRESS). Required after `create`; `resume` will reject DRAFTs |
+| `resume` | `--campaign-id` | — | Resume a PAUSED / FINISHED / FAILED campaign. Will reject DRAFT campaigns — use `start` instead |
+| `pause` | `--campaign-id` | — | Pause a running campaign. This is the only way to halt sending — there is no `delete`, `stop`, or `cancel` endpoint in the HeyReach API |
 | `add-leads` | `--campaign-id` `--leads-json` | `--resume-finished` `--resume-paused` | Add leads (V2, returns counts) |
 | `stop-lead` | `--campaign-id` | `--lead-member-id` `--lead-url` | Stop lead progression |
 | `get-leads` | `--campaign-id` | `--offset` `--limit` `--time-from` `--time-to` `--time-filter` | Get leads with analytics |
@@ -322,9 +323,27 @@ heyreach campaigns update-schedule --campaign-id 12345 \
 
 heyreach campaigns update-accounts --campaign-id 12345 --account-ids "123,456,789"
 
-# 5. Activate the campaign (the Create endpoint leaves it in DRAFT on purpose)
+# 5. Activate the campaign — use `start`, NOT `resume`
+#    (the Create endpoint leaves the campaign in DRAFT on purpose)
+heyreach campaigns start --campaign-id 12345
+# → DRAFT becomes IN_PROGRESS
+
+# Use `pause` to halt sending, then `resume` to continue.
+# `resume` is rejected on DRAFT campaigns:
+#   {"errorMessage":"The campaign you are trying to resume is not paused, finished or failed."}
+heyreach campaigns pause  --campaign-id 12345
 heyreach campaigns resume --campaign-id 12345
 ```
+
+**Activation cheat-sheet:**
+
+| From state | Use | API endpoint |
+|---|---|---|
+| DRAFT | `campaigns start` | `POST /campaign/StartCampaign` |
+| PAUSED / FINISHED / FAILED | `campaigns resume` | `POST /campaign/Resume` |
+| IN_PROGRESS | `campaigns pause` | `POST /campaign/Pause` |
+
+**HeyReach API limitation:** there is no `delete`, `stop`, or `cancel` endpoint for campaigns. Once created, a campaign exists forever; the only way to halt sending is `campaigns pause`. Plan accordingly when scripting bulk campaign management.
 
 **Tip:** Use `campaigns get-sequence` on a manually-built campaign in the UI to capture a proven sequence shape, then feed that JSON directly back into `create --sequence-json` to replicate the workflow across campaigns.
 

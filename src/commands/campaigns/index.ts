@@ -2,6 +2,7 @@ import { campaignsListCommand } from './list.js';
 import { campaignsGetCommand } from './get.js';
 import { campaignsResumeCommand } from './resume.js';
 import { campaignsPauseCommand } from './pause.js';
+import { campaignsStartCommand } from './start.js';
 import { campaignsAddLeadsCommand } from './add-leads.js';
 import { campaignsStopLeadCommand } from './stop-lead.js';
 import { campaignsGetLeadsCommand } from './get-leads.js';
@@ -18,6 +19,7 @@ export const campaignCommands = [
   campaignsGetCommand,
   campaignsResumeCommand,
   campaignsPauseCommand,
+  campaignsStartCommand,
   campaignsAddLeadsCommand,
   campaignsStopLeadCommand,
   campaignsGetLeadsCommand,

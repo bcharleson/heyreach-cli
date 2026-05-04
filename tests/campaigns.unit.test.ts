@@ -6,6 +6,7 @@ import { campaignsUpdateSequenceCommand } from '../src/commands/campaigns/update
 import { campaignsUpdateAccountsCommand } from '../src/commands/campaigns/update-accounts.js';
 import { campaignsUpdateScheduleCommand } from '../src/commands/campaigns/update-schedule.js';
 import { campaignsGetSequenceCommand } from '../src/commands/campaigns/get-sequence.js';
+import { campaignsStartCommand } from '../src/commands/campaigns/start.js';
 
 function mockClient(): { client: HeyReachClient; calls: HeyReachRequestOptions[] } {
   const calls: HeyReachRequestOptions[] = [];
@@ -205,17 +206,34 @@ describe('campaigns get-sequence', () => {
   });
 });
 
+describe('campaigns start', () => {
+  it('sends POST /campaign/StartCampaign with campaignId as query parameter (not body)', async () => {
+    const { client, calls } = mockClient();
+    const input = campaignsStartCommand.inputSchema.parse({ campaignId: '123' });
+    await campaignsStartCommand.handler(input, client);
+    expect(calls[0].method).toBe('POST');
+    expect(calls[0].path).toBe('/campaign/StartCampaign');
+    expect(calls[0].query).toEqual({ campaignId: 123 });
+    expect(calls[0].body).toBeUndefined();
+  });
+
+  it('rejects missing campaign-id', () => {
+    expect(() => campaignsStartCommand.inputSchema.parse({})).toThrow();
+  });
+});
+
 describe('command metadata', () => {
-  it('all six new commands declare correct endpoint paths and methods', () => {
+  it('all seven new commands declare correct endpoint paths and methods', () => {
     expect(campaignsCreateCommand.endpoint).toEqual({ method: 'POST', path: '/campaign/Create' });
     expect(campaignsUpdateSettingsCommand.endpoint).toEqual({ method: 'POST', path: '/campaign/UpdateSettings' });
     expect(campaignsUpdateSequenceCommand.endpoint).toEqual({ method: 'POST', path: '/campaign/UpdateSequence' });
     expect(campaignsUpdateAccountsCommand.endpoint).toEqual({ method: 'POST', path: '/campaign/UpdateAccounts' });
     expect(campaignsUpdateScheduleCommand.endpoint).toEqual({ method: 'POST', path: '/campaign/UpdateSchedule' });
     expect(campaignsGetSequenceCommand.endpoint).toEqual({ method: 'GET', path: '/campaign/GetCampaignSequence' });
+    expect(campaignsStartCommand.endpoint).toEqual({ method: 'POST', path: '/campaign/StartCampaign' });
   });
 
-  it('all six commands belong to the campaigns group', () => {
+  it('all seven commands belong to the campaigns group', () => {
     for (const cmd of [
       campaignsCreateCommand,
       campaignsUpdateSettingsCommand,
@@ -223,6 +241,7 @@ describe('command metadata', () => {
       campaignsUpdateAccountsCommand,
       campaignsUpdateScheduleCommand,
       campaignsGetSequenceCommand,
+      campaignsStartCommand,
     ]) {
       expect(cmd.group).toBe('campaigns');
     }
