@@ -26,6 +26,7 @@ export const webhooksUpdateCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'PATCH', path: '/webhooks/UpdateWebhook' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     const body: Record<string, unknown> = {};

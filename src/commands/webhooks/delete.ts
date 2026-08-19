@@ -17,6 +17,7 @@ export const webhooksDeleteCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'DELETE', path: '/webhooks/DeleteWebhook' },
+  mutating: true,
   fieldMappings: { webhookId: 'query' },
   handler: (input, client) => executeCommand(webhooksDeleteCommand, input, client),
 };

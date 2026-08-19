@@ -10,7 +10,8 @@
     "dist",
     "README.md",
     "CLAUDE.md",
-    "AGENTS.md"
+    "AGENTS.md",
+    "SKILL.md"
   ],
   "scripts": {
     "dev": "tsx src/index.ts",

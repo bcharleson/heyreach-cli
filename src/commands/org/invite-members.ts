@@ -22,6 +22,7 @@ export const orgInviteMembersCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/management/organizations/users/invite/members' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     return client.request({

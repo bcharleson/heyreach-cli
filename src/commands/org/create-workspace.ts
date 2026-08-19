@@ -19,6 +19,7 @@ export const orgCreateWorkspaceCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/management/organizations/workspaces' },
+  mutating: true,
   fieldMappings: { workspaceName: 'body', seatsLimit: 'body' },
   handler: (input, client) => executeCommand(orgCreateWorkspaceCommand, input, client),
 };

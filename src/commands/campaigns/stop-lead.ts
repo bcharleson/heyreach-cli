@@ -24,6 +24,7 @@ export const campaignsStopLeadCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/campaign/StopLeadInCampaign' },
+  mutating: true,
   fieldMappings: { campaignId: 'body', leadMemberId: 'body', leadUrl: 'body' },
   handler: (input, client) => executeCommand(campaignsStopLeadCommand, input, client),
 };

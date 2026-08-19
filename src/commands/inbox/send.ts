@@ -23,6 +23,7 @@ export const inboxSendCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/inbox/SendMessage' },
+  mutating: true,
   fieldMappings: { message: 'body', conversationId: 'body', linkedInAccountId: 'body', subject: 'body' },
   handler: (input, client) => executeCommand(inboxSendCommand, input, client),
 };

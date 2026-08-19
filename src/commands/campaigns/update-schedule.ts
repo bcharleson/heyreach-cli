@@ -21,6 +21,7 @@ export const campaignsUpdateScheduleCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/campaign/UpdateSchedule' },
+  mutating: true,
   fieldMappings: { campaignId: 'body', scheduleJson: 'body' },
   handler: async (input, client) => {
     const body: Record<string, unknown> = {

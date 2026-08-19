@@ -17,6 +17,7 @@ export const campaignsStartCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/campaign/StartCampaign' },
+  mutating: true,
   fieldMappings: { campaignId: 'query' },
   handler: (input, client) => executeCommand(campaignsStartCommand, input, client),
 };

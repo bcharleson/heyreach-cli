@@ -20,6 +20,7 @@ export const orgUpdateWorkspaceCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'PATCH', path: '/management/organizations/workspaces/{workspaceId}' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     const body: Record<string, unknown> = {};

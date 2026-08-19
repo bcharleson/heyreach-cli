@@ -33,12 +33,16 @@ interface CommandDefinition {
 - `src/core/types.ts` — CommandDefinition interface and shared types
 - `src/core/client.ts` — HTTP client (X-API-KEY header, retry, rate limiting, offset/limit pagination)
 - `src/core/handler.ts` — executeCommand() builds HTTP requests from CommandDefinition + input
-- `src/core/auth.ts` — API key resolution (--api-key flag > env var > config file). Supports both workspace and org keys.
+- `src/core/auth.ts` — API key resolution (`--api-key` → env → cwd `.env` → config; `--profile` / `HEYREACH_PROFILE` wins over env and `.env`). Supports both workspace and org keys.
 - `src/core/output.ts` — JSON output formatting, --fields, --quiet, --pretty
-- `src/core/errors.ts` — Typed error classes (AuthError, RateLimitError, etc.)
-- `src/core/config.ts` — ~/.heyreach/config.json manager
-- `src/commands/index.ts` — Command registry, auto-registration, login/logout/status/config
-- `src/mcp-entry.ts` — MCP server (registers all CommandDefinitions as tools)
+- `src/core/errors.ts` — Typed error classes (AuthError, WorkspaceMismatchError, RateLimitError, etc.)
+- `src/core/config.ts` — ~/.heyreach/config.json manager (mode 0600 on every write)
+- `src/core/profiles.ts` — ~/.heyreach/profiles/<slug>.json (dir 0700, files 0600)
+- `src/core/command-context.ts` — fail-closed workspace gate (bound numeric id; no live whoami)
+- `src/core/mutating.ts` — explicit `mutating` flag; POST lists are reads
+- `src/commands/index.ts` — Command registry, auto-registration, login/logout/status/config/profile
+- `src/mcp-entry.ts` — MCP server (registers all CommandDefinitions as tools; same resolver)
+- `src/program.ts` — CLI factory (`heyreach --version` from package.json via tsup `define`)
 - `src/index.ts` — CLI entry point
 - `src/mcp.ts` — Direct MCP entry point
 
@@ -55,6 +59,9 @@ src/
 │   ├── handler.ts
 │   ├── auth.ts
 │   ├── config.ts
+│   ├── profiles.ts
+│   ├── command-context.ts
+│   ├── mutating.ts
 │   ├── output.ts
 │   └── errors.ts
 ├── commands/
@@ -116,7 +123,8 @@ Use `executeCommand()` from `src/core/handler.ts` as the handler for standard en
 
 - **All output is JSON to stdout** — never use console.log for anything except structured output. Use console.error for errors.
 - **Zod validation runs before API calls** — gives clear validation errors
-- **Org commands auto-use org API key** — the `registerCommand()` function detects `group === 'org'` and uses `resolveOrgAuth()` instead of `resolveAuth()`
+- **Agency profiles** — `--profile` / `HEYREACH_PROFILE` selects one named workspace. Writes require `--workspace` matching the bound numeric id *before* HTTP. CheckApiKey cannot whoami; do not invent a live re-fetch. Confirm `status` (slug, workspace_id, workspace_name) before writes. See [SKILL.md](./SKILL.md).
+- **Org commands auto-use org API key** — the `registerCommand()` function detects `group === 'org'` and uses `resolveOrgAuth()` instead of the workspace profile resolver
 - **Comma-separated CLI inputs** → Arrays are accepted as comma-separated strings (e.g., `--statuses "IN_PROGRESS,PAUSED"`) and split in the handler
 - **JSON inputs** → Complex nested objects use `--xxx-json` flags (e.g., `--leads-json`, `--tags-json`, `--permissions-json`)
 

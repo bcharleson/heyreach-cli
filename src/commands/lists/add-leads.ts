@@ -20,6 +20,7 @@ export const listsAddLeadsCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/list/AddLeadsToListV2' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     const leads = JSON.parse(input.leadsJson as string);

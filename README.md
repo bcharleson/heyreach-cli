@@ -70,29 +70,59 @@ npm link
 
 ## Authentication
 
-Three ways to authenticate, checked in this order:
+### Default: one workspace
+
+Resolve order **without** `--profile` / `HEYREACH_PROFILE`:
 
 1. **`--api-key` flag** — pass on any command: `heyreach campaigns list --api-key <key>`
-2. **Environment variable** — `export HEYREACH_API_KEY=your-key`
-3. **Stored config** — run `heyreach login` to save your key to `~/.heyreach/config.json`
+2. **`HEYREACH_API_KEY`**
+3. cwd **`.env`** `HEYREACH_API_KEY`
+4. **Stored config** — `heyreach login` writes `~/.heyreach/config.json` (`{ api_key }`, mode 0600)
 
-Get your API key from your HeyReach workspace settings (Settings → Integrations → Public API).
-
-### For AI agents and scripts
-
-Set the environment variable — no interactive prompts, no config files:
+Get your API key from your HeyReach workspace settings (Settings → Integrations → Public API). `--profile` is not required for this path.
 
 ```bash
 export HEYREACH_API_KEY=your-key
+heyreach status
+# confirm profile, workspace_id, workspace_name, then:
 heyreach campaigns list
 ```
 
-### Interactive login
+`heyreach login` validates the key with `GET /auth/CheckApiKey` (valid/invalid only — no workspace whoami). Pass `--workspace <id>` and optional `--workspace-name` to stamp the bound pair onto default config. Omitted `--workspace` leaves today's single-key file.
+
+`status` / `whoami` print slug (`default`), workspace id, name, and source. They **never** print the API key or a prefix.
+
+### Agency: named profiles
+
+Agencies (and agents) run multiple workspaces from one machine without mixing clients. Name every client as a profile — including the house org.
 
 ```bash
-heyreach login
-# Prompts for your API key, validates it, saves to ~/.heyreach/config.json
+heyreach login --profile client-a --api-key "$CLIENT_A_KEY" --workspace 1001 --workspace-name "Client A"
+heyreach login --profile client-b --api-key "$CLIENT_B_KEY" --workspace 2002 --workspace-name "Client B"
+# writes only ~/.heyreach/profiles/<slug>.json (mode 0600). Never writes config.json.
+# never stores org_api_key in a client profile
 ```
+
+Then:
+
+```bash
+export HEYREACH_PROFILE=client-a
+heyreach status          # confirm slug + workspace_id + workspace_name
+heyreach campaigns list  # POST list — does not require --workspace
+heyreach --profile client-a --workspace 1001 campaigns pause --campaign-id 12345
+```
+
+**Rails**
+
+- Slug: `^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`. `default` is reserved.
+- Profile wins over cwd `.env` and over `HEYREACH_API_KEY`. Unknown slug aborts.
+- One process, one profile. No `--all-profiles`. No `WORKSPACE_KEYS`.
+- Writes under a profile **require** `--workspace <that same numeric id>` and abort (`WORKSPACE_MISMATCH` / validation) *before* any HeyReach HTTP mutation.
+- If `--workspace` is passed on the default path and default config has a stamped id, they must match. No bound id: do not invent one.
+- `logout --profile client-a` deletes only that profile file. Bare `logout` deletes default config only.
+- Confirm `status` printed id + name before any write.
+
+See [SKILL.md](./SKILL.md) for agent-oriented rails.
 
 ### Organization API (admin operations)
 
@@ -103,7 +133,7 @@ export HEYREACH_ORG_API_KEY=your-org-key
 heyreach org workspaces --pretty
 ```
 
-Or: `heyreach login --org` to save the org key, or `--org-key <key>` per-command.
+Or: `heyreach login --org` to save the org key, or `--org-key <key>` per-command. Never store an org key in a client profile.
 
 ---
 
@@ -478,6 +508,13 @@ Add to your MCP settings (Claude Desktop, Cursor, VS Code, Windsurf):
       "env": {
         "HEYREACH_API_KEY": "your-api-key"
       }
+    },
+    "heyreach-client-a": {
+      "command": "npx",
+      "args": ["heyreach-cli", "mcp"],
+      "env": {
+        "HEYREACH_PROFILE": "client-a"
+      }
     }
   }
 }
@@ -521,8 +558,11 @@ src/
 ├── core/
 │   ├── types.ts      # CommandDefinition interface
 │   ├── client.ts     # HTTP client (X-API-KEY, retry, rate limit, pagination)
-│   ├── auth.ts       # API key resolution (flag → env → config)
-│   ├── config.ts     # ~/.heyreach/ config management
+│   ├── auth.ts       # API key resolution (flag → env → .env → config; profile wins)
+│   ├── config.ts     # ~/.heyreach/config.json (0600)
+│   ├── profiles.ts   # ~/.heyreach/profiles/<slug>.json (0600)
+│   ├── command-context.ts # fail-closed workspace gate
+│   ├── mutating.ts   # explicit write flag (POST lists are not writes)
 │   ├── errors.ts     # Typed error classes
 │   ├── output.ts     # JSON output formatting
 │   └── handler.ts    # Request builder from CommandDefinition

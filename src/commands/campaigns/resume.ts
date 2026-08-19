@@ -17,6 +17,7 @@ export const campaignsResumeCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/campaign/Resume' },
+  mutating: true,
   fieldMappings: { campaignId: 'query' },
   handler: (input, client) => executeCommand(campaignsResumeCommand, input, client),
 };

@@ -22,6 +22,7 @@ export const leadsAddTagsCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/lead/AddTags' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     const tagList = (input.tags as string).split(',').map((s) => s.trim());
