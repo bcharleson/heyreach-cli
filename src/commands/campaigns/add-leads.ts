@@ -24,6 +24,7 @@ export const campaignsAddLeadsCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/campaign/AddLeadsToCampaignV2' },
+  mutating: true,
   fieldMappings: { campaignId: 'body', leadsJson: 'body', resumeFinishedCampaign: 'body', resumePausedCampaign: 'body' },
   handler: async (input, client) => {
     const accountLeadPairs = JSON.parse(input.leadsJson as string);

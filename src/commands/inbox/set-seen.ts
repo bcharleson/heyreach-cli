@@ -21,6 +21,7 @@ export const inboxSetSeenCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/inbox/SetSeenStatus' },
+  mutating: true,
   fieldMappings: { conversationId: 'body', linkedInAccountId: 'body', seen: 'body' },
   handler: (input, client) => executeCommand(inboxSetSeenCommand, input, client),
 };

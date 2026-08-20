@@ -31,6 +31,13 @@ export class ValidationError extends HeyReachError {
   }
 }
 
+export class WorkspaceMismatchError extends HeyReachError {
+  constructor(message = 'Workspace id does not match the bound workspace.') {
+    super(message, 'WORKSPACE_MISMATCH', 409);
+    this.name = 'WorkspaceMismatchError';
+  }
+}
+
 export class RateLimitError extends HeyReachError {
   retryAfter?: number;
 

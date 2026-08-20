@@ -20,6 +20,7 @@ export const orgInviteManagersCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/management/organizations/users/invite/managers' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     return client.request({

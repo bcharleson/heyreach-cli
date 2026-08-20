@@ -31,6 +31,7 @@ export const campaignsUpdateSettingsCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/campaign/UpdateSettings' },
+  mutating: true,
   fieldMappings: {
     campaignId: 'body',
     name: 'body',

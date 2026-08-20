@@ -18,6 +18,7 @@ export const listsDeleteLeadsByUrlCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'DELETE', path: '/list/DeleteLeadsFromListByProfileUrl' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     const profileUrls = (input.urls as string).split(',').map((s) => s.trim());

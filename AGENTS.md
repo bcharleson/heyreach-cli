@@ -11,16 +11,23 @@ npm install -g heyreach-cli
 # Authenticate (non-interactive — best for agents)
 export HEYREACH_API_KEY="your-api-key-here"
 
-# Verify it works
+# Verify it works — confirm profile, workspace_id, workspace_name before writes
 heyreach status
 
 # Or save credentials (validates key before saving)
 heyreach login --api-key "your-api-key-here"
+
+# Agency: bind one client workspace (CheckApiKey cannot whoami — --workspace is required)
+heyreach login --profile client-a --api-key "your-api-key-here" --workspace 1001 --workspace-name "Client A"
+export HEYREACH_PROFILE=client-a
+heyreach status
 ```
 
 **Requirements:** Node.js 18+
 
 ## Authentication
+
+### Default single-workspace path
 
 Set your API key via environment variable — no interactive login needed:
 
@@ -41,7 +48,32 @@ heyreach login --api-key "your-api-key-here"
 # → {"success":true,"message":"Credentials saved and verified."}
 ```
 
+Optional stamp: `heyreach login --api-key "..." --workspace 1001 --workspace-name "House org"` writes `{ api_key, workspace_id, workspace_name }` to `~/.heyreach/config.json` (mode 0600). Never write a client key into default config.
+
+Resolve order without a profile: `--api-key` → `HEYREACH_API_KEY` → cwd `.env` → `~/.heyreach/config.json`.
+
 API keys are generated from: HeyReach → Settings → Integrations → Public API
+
+### Agency profiles (`--profile` / `HEYREACH_PROFILE`)
+
+Name every client as a profile. Confirm `status` printed `profile` + `workspace_id` + `workspace_name` before any write. One process, one profile. No `--all-profiles`. No `WORKSPACE_KEYS`.
+
+```bash
+heyreach login --profile client-a --api-key "$CLIENT_A_KEY" --workspace 1001 --workspace-name "Client A"
+# writes only ~/.heyreach/profiles/client-a.json — never config.json, never org_api_key
+export HEYREACH_PROFILE=client-a
+heyreach status
+heyreach campaigns list
+heyreach --profile client-a --workspace 1001 campaigns pause --campaign-id 12345
+```
+
+- Profile wins over leftover cwd `.env` and over `HEYREACH_API_KEY`. Unknown slug aborts.
+- Writes under a profile require `--workspace <bound numeric id>` and abort before HTTP on miss/mismatch (`WORKSPACE_MISMATCH`).
+- POST list/read (campaigns list, inbox list, …) does **not** require `--workspace`.
+- `logout --profile client-a` deletes only that file. Bare `logout` deletes default config only.
+- `status` / `whoami` / `profile list` never print `api_key` or a prefix.
+
+See [SKILL.md](./SKILL.md). Use generic slugs (`client-a`, `client-b`) and fake numeric ids only.
 
 ### Organization API (admin commands)
 
@@ -490,7 +522,7 @@ Complex nested data uses `--xxx-json` flags:
 
 ## MCP Server (for Claude, Cursor, VS Code)
 
-The CLI includes a built-in MCP server exposing all 53 commands as tools:
+The CLI includes a built-in MCP server for the **May public-API surface plus agency profiles** (0.2.2). Not full Postman coverage (82 endpoints). Inbox V3, per-campaign stats, org LinkedIn account move, account-login API, and email enrichment are out of this release.
 
 ```bash
 heyreach mcp
@@ -506,6 +538,13 @@ MCP config for your AI assistant:
       "env": {
         "HEYREACH_API_KEY": "your-key"
       }
+    },
+    "heyreach-client-a": {
+      "command": "npx",
+      "args": ["heyreach-cli", "mcp"],
+      "env": {
+        "HEYREACH_PROFILE": "client-a"
+      }
     }
   }
 }
@@ -513,7 +552,8 @@ MCP config for your AI assistant:
 
 ## Tips for AI Agents
 
-1. **Always use `--help`** on a group before guessing subcommand names
+1. **Confirm `status` printed `profile`, `workspace_id`, and `workspace_name` before any write.** Agency: use `--profile` / `HEYREACH_PROFILE`. Never print or commit API keys.
+2. **Always use `--help`** on a group before guessing subcommand names
 2. **Parse JSON output** directly — it's the default format
 3. **Check exit codes** — 0 means success, 1 means error
 4. **Required options** are enforced with clear error messages before API calls

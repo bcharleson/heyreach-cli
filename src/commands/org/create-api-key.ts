@@ -18,6 +18,7 @@ export const orgCreateApiKeyCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/management/organizations/api-keys/workspaces/{workspaceId}' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     return client.request({

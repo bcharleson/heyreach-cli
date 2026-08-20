@@ -22,6 +22,7 @@ export const listsCreateCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/list/CreateEmptyList' },
+  mutating: true,
   fieldMappings: { name: 'body', type: 'body' },
   handler: (input, client) => executeCommand(listsCreateCommand, input, client),
 };

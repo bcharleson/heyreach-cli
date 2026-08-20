@@ -18,6 +18,7 @@ export const listsDeleteLeadsCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'DELETE', path: '/list/DeleteLeadsFromList' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     const leadMemberIds = (input.memberIds as string).split(',').map((s) => s.trim());

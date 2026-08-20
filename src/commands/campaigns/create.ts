@@ -35,6 +35,7 @@ export const campaignsCreateCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/campaign/Create' },
+  mutating: true,
   fieldMappings: {
     name: 'body',
     linkedInUserListId: 'body',

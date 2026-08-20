@@ -20,6 +20,7 @@ export const campaignsUpdateSequenceCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/campaign/UpdateSequence' },
+  mutating: true,
   fieldMappings: { campaignId: 'body', sequenceJson: 'body' },
   handler: async (input, client) => {
     const body: Record<string, unknown> = {

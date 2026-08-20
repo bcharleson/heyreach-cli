@@ -16,6 +16,7 @@ export const leadTagsCreateCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/lead_tags/CreateTags' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     const tags = JSON.parse(input.tagsJson as string);

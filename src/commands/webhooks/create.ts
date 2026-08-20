@@ -22,6 +22,7 @@ export const webhooksCreateCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/webhooks/CreateWebhook' },
+  mutating: true,
   fieldMappings: {},
   handler: async (input, client) => {
     const body: Record<string, unknown> = {

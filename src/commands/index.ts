@@ -1,11 +1,15 @@
-import { createInterface } from 'node:readline/promises';
 import { Command } from 'commander';
 import type { CommandDefinition, GlobalOptions } from '../core/types.js';
-import { resolveAuth, resolveOrgAuth } from '../core/auth.js';
-import { createClient } from '../core/client.js';
-import { saveConfig, deleteConfig, loadConfig, getConfigPath } from '../core/config.js';
+import { createCommandContext } from '../core/command-context.js';
+import { isMutatingCommand } from '../core/mutating.js';
+import { saveConfig, loadConfig, getConfigPath } from '../core/config.js';
 import { output, outputError } from '../core/output.js';
 import { formatError } from '../core/errors.js';
+
+import { registerLoginCommand } from './auth/login.js';
+import { registerLogoutCommand } from './auth/logout.js';
+import { registerStatusCommand } from './auth/status.js';
+import { registerProfileCommands } from './profile/index.js';
 
 import { campaignCommands } from './campaigns/index.js';
 import { inboxCommands } from './inbox/index.js';
@@ -41,89 +45,9 @@ function getGlobalOpts(program: Command): GlobalOptions {
     fields: opts.fields,
     apiKey: opts.apiKey,
     orgKey: opts.orgKey,
+    profile: opts.profile,
+    workspace: opts.workspace,
   };
-}
-
-function registerLoginCommand(program: Command): void {
-  program
-    .command('login')
-    .description('Save your API key to ~/.heyreach/config.json')
-    .option('--org', 'Store Organization API key instead of workspace key')
-    .addHelpText('after', '\nExamples:\n  $ heyreach login --api-key <key>\n  $ heyreach login --org --org-key <key>\n  $ heyreach login  # interactive prompt')
-    .action(async (opts) => {
-      const globalOpts = getGlobalOpts(program);
-      const isOrg = opts.org;
-
-      let apiKey = isOrg
-        ? (globalOpts.orgKey ?? process.env.HEYREACH_ORG_API_KEY)
-        : (globalOpts.apiKey ?? process.env.HEYREACH_API_KEY);
-
-      if (!apiKey) {
-        const rl = createInterface({ input: process.stdin, output: process.stderr });
-        const label = isOrg ? 'Organization API key' : 'HeyReach API key';
-        apiKey = (await rl.question(`${label}: `)).trim();
-        rl.close();
-      }
-
-      if (!apiKey) {
-        outputError({ error: 'API key is required.', code: 'VALIDATION_ERROR' }, globalOpts);
-        return;
-      }
-
-      // Validate the key before saving
-      try {
-        const checkPath = isOrg ? '/organization/GetWorkspaces' : '/auth/CheckApiKey';
-        const client = createClient({ apiKey, baseUrl: 'https://api.heyreach.io/api/public' });
-        await client.request({ method: 'GET', path: checkPath });
-      } catch {
-        outputError({ error: `Invalid ${isOrg ? 'Organization' : ''} API key. Check your key and try again.`, code: 'AUTH_ERROR' }, globalOpts);
-        return;
-      }
-
-      const config = isOrg ? { org_api_key: apiKey } : { api_key: apiKey };
-      saveConfig(config);
-      output({ success: true, message: 'Credentials saved and verified.', config_path: getConfigPath() }, globalOpts);
-    });
-}
-
-function registerLogoutCommand(program: Command): void {
-  program
-    .command('logout')
-    .description('Remove stored credentials from ~/.heyreach/config.json')
-    .action(async () => {
-      const globalOpts = getGlobalOpts(program);
-      deleteConfig();
-      output({ success: true, message: 'Credentials removed.' }, globalOpts);
-    });
-}
-
-function registerStatusCommand(program: Command): void {
-  program
-    .command('status')
-    .description('Check API key validity and show config')
-    .action(async () => {
-      const globalOpts = getGlobalOpts(program);
-      try {
-        const auth = resolveAuth({ apiKey: globalOpts.apiKey });
-        const client = createClient(auth);
-        await client.request({ method: 'GET', path: '/auth/CheckApiKey' });
-        output({
-          authenticated: true,
-          api_key: '***' + auth.apiKey.slice(-4),
-          config_path: getConfigPath(),
-        }, globalOpts);
-      } catch (err) {
-        const config = loadConfig();
-        const usedKey = globalOpts.apiKey ?? process.env.HEYREACH_API_KEY ?? config.api_key;
-        output({
-          authenticated: false,
-          api_key: usedKey ? '***' + usedKey.slice(-4) : '(not set)',
-          api_key_source: globalOpts.apiKey ? '--api-key flag' : process.env.HEYREACH_API_KEY ? 'HEYREACH_API_KEY env' : config.api_key ? 'config file' : 'none',
-          config_path: getConfigPath(),
-          error: err instanceof Error ? err.message : String(err),
-        }, globalOpts);
-      }
-    });
 }
 
 function registerConfigCommand(program: Command): void {
@@ -131,7 +55,7 @@ function registerConfigCommand(program: Command): void {
 
   configCmd
     .command('set')
-    .description('Set configuration values')
+    .description('Set configuration values on ~/.heyreach/config.json (never a client profile)')
     .option('--api-key <key>', 'HeyReach workspace API key')
     .option('--org-key <key>', 'HeyReach Organization API key')
     .action(async (opts) => {
@@ -149,15 +73,20 @@ function registerConfigCommand(program: Command): void {
 
   configCmd
     .command('get')
-    .description('Show current configuration')
+    .description('Show current configuration (never prints API keys or prefixes)')
     .action(async () => {
       const globalOpts = getGlobalOpts(program);
       const config = loadConfig();
-      output({
-        api_key: config.api_key ? '***' + config.api_key.slice(-4) : '(not set)',
-        org_api_key: config.org_api_key ? '***' + config.org_api_key.slice(-4) : '(not set)',
-        config_path: getConfigPath(),
-      }, globalOpts);
+      output(
+        {
+          api_key_set: Boolean(config.api_key),
+          org_api_key_set: Boolean(config.org_api_key),
+          workspace_id: config.workspace_id ?? null,
+          workspace_name: config.workspace_name ?? null,
+          config_path: getConfigPath(),
+        },
+        globalOpts,
+      );
     });
 }
 
@@ -197,12 +126,15 @@ function registerCommand(parent: Command, cmdDef: CommandDefinition, program: Co
     const globalOpts = getGlobalOpts(program);
 
     try {
-      // Org commands use org API key
       const isOrgCommand = cmdDef.group === ORG_GROUP;
-      const auth = isOrgCommand
-        ? resolveOrgAuth({ orgKey: globalOpts.orgKey })
-        : resolveAuth({ apiKey: globalOpts.apiKey });
-      const client = createClient(auth);
+      const { client } = createCommandContext({
+        apiKey: globalOpts.apiKey,
+        orgKey: globalOpts.orgKey,
+        profile: globalOpts.profile,
+        workspace: globalOpts.workspace,
+        mutating: isMutatingCommand(cmdDef),
+        orgCommand: isOrgCommand,
+      });
 
       const input: Record<string, unknown> = {};
 
@@ -211,7 +143,7 @@ function registerCommand(parent: Command, cmdDef: CommandDefinition, program: Co
         if (cmdDef.cliMappings.options) {
           for (const optDef of cmdDef.cliMappings.options) {
             const flagName = optDef.flags.match(/--([a-zA-Z0-9][a-zA-Z0-9-_]*)/)?.[1] ?? optDef.field;
-            const commanderKey = flagName.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+            const commanderKey = flagName.replace(/-([a-z])/g, (_: string, c: string) => c.toUpperCase());
             const value = cmdOpts[commanderKey] ?? cmdOpts[flagName] ?? cmdOpts[optDef.field];
             if (value !== undefined) input[optDef.field] = value;
           }
@@ -251,6 +183,7 @@ export function registerAllCommands(program: Command): void {
   registerLoginCommand(program);
   registerLogoutCommand(program);
   registerStatusCommand(program);
+  registerProfileCommands(program);
   registerConfigCommand(program);
   registerMcpCommand(program);
 

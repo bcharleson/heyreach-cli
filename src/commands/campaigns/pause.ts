@@ -17,6 +17,7 @@ export const campaignsPauseCommand: CommandDefinition = {
     ],
   },
   endpoint: { method: 'POST', path: '/campaign/Pause' },
+  mutating: true,
   fieldMappings: { campaignId: 'query' },
   handler: (input, client) => executeCommand(campaignsPauseCommand, input, client),
 };
