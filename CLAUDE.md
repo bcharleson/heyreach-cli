@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-CLI and MCP server for the [HeyReach](https://heyreach.io) LinkedIn automation platform. Wraps the HeyReach Public API (54 commands across 10 groups) into both a terminal CLI and an MCP server for AI assistants.
+CLI and MCP server for the [HeyReach](https://heyreach.io) LinkedIn automation platform. **0.2.2** wraps the May public-API surface plus fail-closed agency profiles (`--profile` loads the key, `--workspace` confirms writes). Not full Postman coverage (82 endpoints). Inbox V3, per-campaign stats, org LinkedIn account move, account-login API, and email enrichment are out of this cut.
 
 **Dual interface, single codebase:** Every API endpoint is defined once as a `CommandDefinition` object that powers both the CLI subcommand and the MCP tool.
 

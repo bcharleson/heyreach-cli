@@ -1,7 +1,7 @@
 {
   "name": "heyreach-cli",
-  "version": "0.2.1",
-  "description": "CLI and MCP server for the HeyReach LinkedIn automation platform. Manage campaigns, leads, lists, inbox, webhooks, and more — from your terminal.",
+  "version": "0.2.2",
+  "description": "CLI and MCP server for the HeyReach LinkedIn automation platform. May public-API surface plus fail-closed agency profiles (--profile / --workspace). Not full Postman coverage.",
   "type": "module",
   "bin": {
     "heyreach": "dist/index.js"
@@ -11,7 +11,8 @@
     "README.md",
     "CLAUDE.md",
     "AGENTS.md",
-    "SKILL.md"
+    "SKILL.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "dev": "tsx src/index.ts",

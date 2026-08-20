@@ -5,11 +5,13 @@ description: Use the HeyReach CLI and MCP server for LinkedIn campaigns, leads, 
 
 # HeyReach CLI — agent skill
 
-Public CLI (`npm i -g heyreach-cli`). JSON on stdout. Node.js 18+.
+Public CLI 0.2.2 (`npm i -g heyreach-cli`). JSON on stdout. Node.js 18+.
 
-**Name every client as a profile.** Confirm `status` / `whoami` (`profile`, `workspace_id`, `workspace_name`, `source`) before any write. One process, one profile. Never print or commit raw API keys.
+**This release is agency profiles, not full API coverage.** Postman now has 82 endpoints. The CLI still wraps the May surface plus fail-closed isolation. Out of 0.2.2 (later): Inbox V3, per-campaign stats, org LinkedIn account move, account-login API, email enrichment. Do not invent those commands.
 
-HeyReach `GET /auth/CheckApiKey` is valid/invalid only. There is no live workspace whoami from a workspace public key. Bind the numeric `--workspace` id at login.
+**Name every client as a profile.** `--profile` loads that key. `--workspace` confirms writes only (numeric id). Confirm `status` / `whoami` (`profile`, `workspace_id`, `workspace_name`, `source`) before any write. One process, one profile. No `--all-profiles`. Never print or commit raw API keys.
+
+HeyReach `GET /auth/CheckApiKey` is valid/invalid only. There is no live workspace whoami from a workspace public key. `login --profile` requires `--workspace`. POST list endpoints are not writes.
 
 ## Default: one workspace (existing npm users)
 

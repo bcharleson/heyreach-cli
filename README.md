@@ -2,7 +2,7 @@
 
 **HeyReach in your terminal.** Run LinkedIn automation campaigns, manage leads, lists, conversations, webhooks, and organization settings — from a single command line.
 
-54 commands across 10 API groups. Full coverage of the [HeyReach](https://heyreach.io) Public API. Built for humans, scripts, CI/CD pipelines, and AI agents.
+**0.2.2** is the agency-profiles release: `--profile` loads one workspace key; `--workspace` confirms writes only. It is **not** full public API coverage. HeyReach Postman now lists 82 endpoints; this CLI still covers the May surface plus fail-closed profiles. Inbox V3, per-campaign stats, org LinkedIn account move, account-login API, and email enrichment are out of 0.2.2 (0.2.3 later).
 
 ```bash
 npm install -g heyreach-cli
@@ -23,7 +23,7 @@ npm install -g heyreach-cli
 
 ## What This CLI Enables
 
-Every action you can take in the HeyReach dashboard, you can do from your terminal:
+The May public-API surface, plus agency isolation. Not every HeyReach dashboard or Postman action:
 
 **Campaign operations** — list, get, pause, resume campaigns. Add leads to campaigns, stop leads mid-sequence, pull lead analytics with status breakdowns.
 
@@ -31,7 +31,7 @@ Every action you can take in the HeyReach dashboard, you can do from your termin
 
 **List management** — create lead and company lists, add/remove leads by ID or profile URL, query companies, and search leads within lists with date filters.
 
-**Inbox management** — browse conversations with filters (account, campaign, tags, seen status), read full chatroom threads, send messages, and mark conversations as seen/unseen.
+**Inbox management** — existing V2 conversation list/get/send/seen. Inbox V3 is not in 0.2.2.
 
 **Webhooks** — create, update, and delete webhooks for 12 event types including connection requests, message replies, InMail replies, campaign completions, and tag updates.
 
@@ -39,7 +39,9 @@ Every action you can take in the HeyReach dashboard, you can do from your termin
 
 **Organization admin** — manage workspaces, users, API keys, and invite admins/members/managers — all via the Management API.
 
-**AI agent integration** — every command works as both a CLI subcommand and an MCP tool, so AI assistants (Claude, Cursor, Windsurf) can manage your LinkedIn outbound directly.
+**AI agent integration** — every wrapped command is both a CLI subcommand and an MCP tool. Confirm `status` (slug, workspace id, name) before writes.
+
+See [CHANGELOG.md](./CHANGELOG.md) and [SKILL.md](./SKILL.md).
 
 ---
 
@@ -114,9 +116,11 @@ heyreach --profile client-a --workspace 1001 campaigns pause --campaign-id 12345
 
 **Rails**
 
+- `--profile` **loads the key**. `--workspace` **confirms writes only** (numeric id). POST list/read does not need `--workspace`.
 - Slug: `^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`. `default` is reserved.
 - Profile wins over cwd `.env` and over `HEYREACH_API_KEY`. Unknown slug aborts.
 - One process, one profile. No `--all-profiles`. No `WORKSPACE_KEYS`.
+- `GET /auth/CheckApiKey` cannot whoami — `login --profile` requires `--workspace <id>`.
 - Writes under a profile **require** `--workspace <that same numeric id>` and abort (`WORKSPACE_MISMATCH` / validation) *before* any HeyReach HTTP mutation.
 - If `--workspace` is passed on the default path and default config has a stamped id, they must match. No bound id: do not invent one.
 - `logout --profile client-a` deletes only that profile file. Bare `logout` deletes default config only.
@@ -477,7 +481,7 @@ heyreach org create-api-key --workspace-id 123 --type PUBLIC
 
 ## MCP Server
 
-The CLI doubles as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server, giving AI assistants direct access to all 53 HeyReach tools as native function calls.
+The CLI doubles as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server for the **wrapped May surface** (plus `status` / profile isolation). Not the full 82-endpoint Postman collection.
 
 ```bash
 heyreach mcp
@@ -520,7 +524,7 @@ Add to your MCP settings (Claude Desktop, Cursor, VS Code, Windsurf):
 }
 ```
 
-This registers 53 tools across 10 groups:
+This registers the May-surface tools (plus `status`). Not Inbox V3, per-campaign stats, org LinkedIn account move, account-login, or email enrichment:
 
 | Group | Tools | Examples |
 |-------|-------|---------|

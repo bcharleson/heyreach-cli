@@ -8,7 +8,7 @@ describe('CLI version', () => {
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8')) as {
       version: string;
     };
-    expect(pkg.version).toBe('0.2.1');
+    expect(pkg.version).toBe('0.2.2');
     expect(getCliVersion()).toBe(pkg.version);
     expect(createProgram().version()).toBe(pkg.version);
   });

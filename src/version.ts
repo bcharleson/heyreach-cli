@@ -14,6 +14,6 @@ export function getCliVersion(): string {
     };
     return pkg.version;
   } catch {
-    return '0.2.1';
+    return '0.2.2';
   }
 }

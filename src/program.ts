@@ -12,9 +12,10 @@ export function createProgram(): Command {
   program
     .name('heyreach')
     .description(
-      'HeyReach CLI — manage LinkedIn campaigns, leads, lists, inbox, webhooks, and more from your terminal. ' +
-        'Default: one workspace via login/config. Agency: --profile selects one named workspace; ' +
-        'writes also require --workspace. One process, one workspace.',
+      'HeyReach CLI 0.2.2 — May public-API surface plus fail-closed agency profiles. ' +
+        'Not full Postman coverage (82 endpoints). --profile loads one workspace key; ' +
+        '--workspace confirms writes only (numeric id). POST list endpoints are not writes. ' +
+        'No --all-profiles. CheckApiKey cannot whoami: login --profile requires --workspace.',
     )
     .version(getCliVersion())
     .option('--pretty', 'Pretty-print JSON output')
@@ -24,12 +25,11 @@ export function createProgram(): Command {
     .option('--org-key <key>', 'HeyReach Organization API key')
     .option(
       '--profile <slug>',
-      'Use a named workspace profile from ~/.heyreach/profiles/<slug>.json (or set HEYREACH_PROFILE)',
+      'Load the workspace key from ~/.heyreach/profiles/<slug>.json (or set HEYREACH_PROFILE). One process, one profile.',
     )
     .option(
       '--workspace <id>',
-      'Confirm the target numeric workspace id. Required for writes when using a profile. ' +
-        'When passed on a path with a bound id, must match that id.',
+      'Confirm the bound numeric workspace id. Required for writes when a profile is selected; not required for POST list/read.',
     );
 
   registerAllCommands(program);

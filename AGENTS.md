@@ -522,7 +522,7 @@ Complex nested data uses `--xxx-json` flags:
 
 ## MCP Server (for Claude, Cursor, VS Code)
 
-The CLI includes a built-in MCP server exposing all 53 commands as tools:
+The CLI includes a built-in MCP server for the **May public-API surface plus agency profiles** (0.2.2). Not full Postman coverage (82 endpoints). Inbox V3, per-campaign stats, org LinkedIn account move, account-login API, and email enrichment are out of this release.
 
 ```bash
 heyreach mcp
